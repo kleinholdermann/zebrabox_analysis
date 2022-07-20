@@ -1,0 +1,16 @@
+# ignore emacs temporary files
+*~
+
+# ignore local ffmpeg
+res/
+
+# ignore vids
+vid/
+
+# ignore temporary analysis files
+analysis/vids/
+analysis/frames/
+analysis/larvae_positions
+analysis/*.png
+analysis/*.txt
+analysis/tmp*

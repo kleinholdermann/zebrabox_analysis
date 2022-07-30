@@ -16,7 +16,7 @@ fi
 ffmpeg -ss 00:00:00.01 -i $1 -frames:v 1 still.png
 
 ## call python script for well detection
-python3 detect_well_positions.py -i still.png --cols 12 --rows 8 -o wells.png
+python3 detect_well_positions.py -i still.png --cols 8 --rows 6 -o wells.png
 
 ## prepare directories for intermediate videos and results
 [ -d "./vids" ] && rm -rf ./vids
@@ -28,50 +28,65 @@ mkdir larvae_positions
 rad=$(cat radius.txt)
 ((dia = rad*2))
 
+## define main well processing function in order to enable parallel processing
+process_well () {    
+
+ # give sensible names to variables
+  dia=$2
+  xc=$3
+  yc=$4
+  i=$5
+
+  ffmpeg -i $1 -filter:v "crop=${dia}:${dia}:${xc}:${yc}" ./vids/well_${i}.mp4
+
+ ## apply a temporal filter for background removal and binarize video
+  # temporal filtering, i.e. background removal
+  ffmpeg -i ./vids/well_${i}.mp4 -vf tmix=frames=75:weights="-1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 24 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1" ./vids/filtered_${i}.mp4
+
+  # invert video
+  ffmpeg -i ./vids/filtered_${i}.mp4 -vf negate ./vids/inverted_${i}.mp4
+
+  #deflicker
+  ffmpeg -i ./vids/inverted_${i}.mp4 -vf deflicker -y ./vids/deflickered_${i}.mp4
+
+  # binarize
+  ffmpeg -i ./vids/deflickered_${i}.mp4 -f lavfi -i color=LightGrey:s=${dia}x${dia} -f lavfi -i color=black:s=${dia}x${dia} -f lavfi -i color=white:s=${dia}x${dia} -filter_complex threshold ./vids/binarized_${i}.mp4
+
+  # extract each frame of video as a picture and get the larvae position
+  # remove old frames if present
+  [ -d "./frames_${i}" ] && rm -rf ./frames    
+  mkdir frames_${i}
+
+  # extract frames
+  ffmpeg -i ./vids/binarized_${i}.mp4 ./frames_${i}/frame%1d.png -hide_banner
+
+  # loop over frames and get position for each frame
+  tmp=$(ffprobe -select_streams v -show_streams ./vids/well_${i}.mp4|grep nb_frames)
+  nframes=${tmp#*=} # get number of frames
+  for fr in $(seq 1 $nframes); do
+    mogrify ./frames_${i}/frame${fr}.png -threshold 50% 
+    tmp=$(convert ./frames_${i}/frame${fr}.png -define connected-components:verbose=true \
+		  -connected-components 4 frame_${i}.png| egrep -v "gray\(0\)"|sed '1d'|head -n1)
+    if [ -z "$tmp" ]
+    then
+      tmp="NA NA NA NA NA"
+    else
+      tmp=${tmp#*:}
+      tmp=${tmp/,/" "}
+    fi
+    echo $fr $tmp >> ./larvae_positions/well_${i}.txt
+  done # loop over frames
+} # end of well processing function definition
+
+
 for x in $(cat xcenter.txt); do
   for y in $(cat ycenter.txt); do
+
    ## extract video of one particular well only
     ((i=i+1))
     ((xc=x-rad))
     ((yc=y-rad))
-    ffmpeg -i $1 -filter:v "crop=${dia}:${dia}:${xc}:${yc}" ./vids/well_${i}.mp4
-
-   ## apply a temporal filter for background removal and binarize video
-    # temporal filtering, i.e. background removal
-    ffmpeg -i ./vids/well_${i}.mp4 -vf tmix=frames=75:weights="-1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 24 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1" ./vids/filtered_${i}.mp4
-
-    # invert video
-    ffmpeg -i ./vids/filtered_${i}.mp4 -vf negate ./vids/inverted_${i}.mp4
-
-    #deflicker
-    ffmpeg -i ./vids/inverted_${i}.mp4 -vf deflicker -y ./vids/deflickered_${i}.mp4
-
-    # binarize
-    ffmpeg -i ./vids/deflickered_${i}.mp4 -f lavfi -i color=LightGrey:s=${dia}x${dia} -f lavfi -i color=black:s=${dia}x${dia} -f lavfi -i color=white:s=${dia}x${dia} -filter_complex threshold ./vids/binarized_${i}.mp4
-
-   extract each frame of video as a picture and get the larvae position
-    # remove old frames if present
-    [ -d "./frames" ] && rm -rf ./frames    
-    mkdir frames
-
-    # extract frames
-    ffmpeg -i ./vids/binarized_${i}.mp4 ./frames/frame%1d.png -hide_banner
-
-    # loop over frames and get position for each frame
-    tmp=$(ffprobe -select_streams v -show_streams ./vids/well_${i}.mp4|grep nb_frames)
-    nframes=${tmp#*=} # get number of frames
-    for fr in $(seq 1 $nframes); do
-      mogrify ./frames/frame${fr}.png -threshold 50% 
-      tmp=$(convert ./frames/frame${fr}.png -define connected-components:verbose=true -connected-components 4 frame.png| egrep -v "gray\(0\)"|sed '1d'|head -n1)
-      if [ -z "$tmp" ]
-      then
-        tmp="NA NA NA NA NA"
-      else
-        tmp=${tmp#*:}
-        tmp=${tmp/,/" "}
-      fi
-      echo $fr $tmp >> ./larvae_positions/well_${i}.txt
-    done # loop over frames
+    process_well $1 $dia $xc $yc $i &
   done # loop over well rows
 done # loop over well columns
  

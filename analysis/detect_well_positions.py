@@ -25,7 +25,7 @@ gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
 # detect circles in the image
 
-circles = cv2.HoughCircles(gray,cv2.HOUGH_GRADIENT,1.5,20,param1=10,param2=40,minRadius=27,maxRadius=35)
+circles = cv2.HoughCircles(gray,cv2.HOUGH_GRADIENT,1.5,20,param1=10,param2=40,minRadius=51,maxRadius=55)
 
 xpos = circles[0,:][:, 0]
 ypos = circles[0,:][:, 1]

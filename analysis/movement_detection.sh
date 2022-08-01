@@ -41,7 +41,7 @@ process_well () {
 
  ## apply a temporal filter for background removal and binarize video
   # temporal filtering, i.e. background removal
-  ffmpeg -i ./vids/well_${i}.mp4 -vf tmix=frames=75:weights="-1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 24 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1" ./vids/filtered_${i}.mp4
+  ./temporal_filter.sh ./vids/well_${i}.mp4 ./vids/filtered_${i}.mp4
 
   # invert video
   ffmpeg -i ./vids/filtered_${i}.mp4 -vf negate ./vids/inverted_${i}.mp4

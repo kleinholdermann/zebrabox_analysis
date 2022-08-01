@@ -2,9 +2,8 @@
 # Purpose: Movement detection of zebrafish larvae in Zebrabox wells
 # Usage: movement_detection.sh PATH/TO/video.mp4
 #
-# V 0.1.0 2022-07-20 Urs Kleinholdermann
+# V 0.1.1 2022-08-01 Urs Kleinholdermann
 #
-# TODO: has issues with mirroring on well wall, especially in the marginal wells
 
 # Path must point to a recent version of ffmpeg (4.x) for using temporal filtering
 # default Ubuntu is 3.x. Thus adapt this according to your setup:

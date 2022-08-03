@@ -46,6 +46,12 @@ for(wellno in unique(df$well)){
 }
 
 
+# create properly named factor for wells
+df$wellf = factor( as.numeric(df$well)
+                 , levels = sort(unique(as.numeric(df$well)))
+                 , labels = as.vector(outer( LETTERS[seq( from = 1, to = 6 )]
+                                           , seq(from =1, to = 8), paste, sep = "_")))
+
 # plot movement data
 require(lattice)
 
@@ -68,5 +74,5 @@ cond = c(seq( 6, 48, 6)
 #xyplot(speed~frame|as.factor(well), aspect = 1, pch = ".", data = df, layout = c(8, 6), index.cond = list(cond))
 
 # distance plot
-xyplot(distance~frame|as.factor(well), aspect = 1, type = "l", data = df, layout = c(8, 6), index.cond = list(cond))
+xyplot(distance~frame|wellf, aspect = 1, type = "l", data = df, layout = c(8, 6), index.cond = list(cond))
 

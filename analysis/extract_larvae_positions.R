@@ -1,17 +1,21 @@
+# set threshold for displacement area to be recognized as larave
+# instead of random noise
 areathresh = 8
 
+# get paths of data files
 files = dir("./larvae_positions", pattern = "*.txt")
 files = paste("./larvae_positions",files,sep = "/")
 
+# define function for data read in and preprocessing
 read.trace <- function(fname, thresh){
   require(zoo) # for NA replacement function
 
- # read data
+ # read data and set sensible column names
   df = read.table(fname, sep = "", stringsAsFactors = FALSE)
   colnames(df) <- c("frame","bbox","x","y","area","color")
     
  # remove points where area is too small (very likely random noise)
-  df[df$area <= thresh|is.na(df$area),] = NA
+  df[df$area <= thresh|is.na(df$area),c("x","y","area")] = NA
 
  # add well number
   df$well = as.numeric(gsub("\\D*([0-9]+)\\.txt", "\\1", fname))  
@@ -28,19 +32,11 @@ read.trace <- function(fname, thresh){
   return(df)
 }
 
+# call data read function for all wells and concatenate data
+# into a single dataframe
 df = do.call(rbind, lapply(files, read.trace, areathresh))
 
-# plot movement data
-require(lattice)
-cond = c(seq( 6, 48, 6)
-        ,seq( 5, 47, 6)
-        ,seq( 4, 46, 6)
-        ,seq( 3, 45, 6)
-        ,seq( 2, 44, 6)
-        ,seq( 1, 43, 6))
-#xyplot(-y~x|as.factor(well), aspect = 1, pch  = ".", data = df, layout = c(8, 6), index.cond = list(cond))
-#xyplot(-y~x|as.factor(well), aspect = 1, type = "l", data = df, layout = c(8, 6), index.cond = list(cond))
-
+# add speed and distance to dataframe
 df$speed = c(NA, sqrt(diff(df$x)^2 + diff(df$y)^2))
 df$speed[df$frame == 1] = NA
 df$speed[is.na(df$speed)] = 0
@@ -50,6 +46,27 @@ for(wellno in unique(df$well)){
 }
 
 
-xyplot(speed~frame|as.factor(well), aspect = 1, pch = ".", data = df, layout = c(8, 6), index.cond = list(cond))
+# plot movement data
+require(lattice)
+
+# construct layout for lattice plots such that it corresponds
+# to the layout of zebrabox wells (only works for 6x8 layout)
+cond = c(seq( 6, 48, 6)
+        ,seq( 5, 47, 6)
+        ,seq( 4, 46, 6)
+        ,seq( 3, 45, 6)
+        ,seq( 2, 44, 6)
+        ,seq( 1, 43, 6))
+
+# location plot
+#xyplot(-y~x|as.factor(well), aspect = 1, pch  = ".", data = df, layout = c(8, 6), index.cond = list(cond))
+
+# trace plot
+#xyplot(-y~x|as.factor(well), aspect = 1, type = "l", data = df, layout = c(8, 6), index.cond = list(cond))
+
+# speed plot
+#xyplot(speed~frame|as.factor(well), aspect = 1, pch = ".", data = df, layout = c(8, 6), index.cond = list(cond))
+
+# distance plot
 xyplot(distance~frame|as.factor(well), aspect = 1, type = "l", data = df, layout = c(8, 6), index.cond = list(cond))
 

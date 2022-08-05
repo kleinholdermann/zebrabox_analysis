@@ -116,7 +116,7 @@ savePlot("../img/distance_panels.png", type = "png")
 # condition comparison plot
   dfa = aggregate(speed~wellf*cond, data = df, sum)
   dfaa = do.call(data.frame, aggregate(speed~cond, data = dfa, function(x){c(m=mean(x),s=sd(x))}))
-  dfaa$see = dfaa$speed.s/sqrt(48)*2
+  dfaa$see = dfaa$speed.s/sqrt(24)*2
 
   with(dfa, plot(as.numeric(as.factor(cond))+runif(nrow(dfa))*.25-.125,speed,las=1
                 ,xlim = c(0.5,2.5),xaxt = "n", pch = 19
@@ -125,6 +125,6 @@ savePlot("../img/distance_panels.png", type = "png")
   points(c(1,2), dfaa$speed.m, pch = 19, cex = 3, col = "red")
   arrows(c(1,2),dfaa$speed.m-dfaa$see,c(1,2),dfaa$speed.m+dfaa$see, code = 3, angle = 90
         ,col="red",lwd=2)
-  t = t.test(speed~cond,dfa)
-  text(1.5,4000,paste("p =",round(t$p.value,digits=3)))
+  t = wilcox.test(speed~cond,dfa)
+  text(1.5,4000,paste("p =",signif(t$p.value, digits = 3)))
 savePlot("../img/distance_comparison.png", type = "png")
